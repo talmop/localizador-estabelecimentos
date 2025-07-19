@@ -1,63 +1,62 @@
-// Importa o React para utilizar JSX e componentes funcionais
-import React from 'react';
-// Importa o CSS do App (estilização personalizada)
-import './App.css';
-// Importa os componentes necessários do React Leaflet
+ import React, { useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-// Importa o CSS padrão do Leaflet (essencial para exibir o mapa corretamente)
-import 'leaflet/dist/leaflet.css';
-// Importa o Leaflet diretamente para configurar os ícones
+import AvaliacaoForm from './AvaliacaoForm';
 import L from 'leaflet';
 
-// Importa os ícones padrão do Leaflet manualmente
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-
-// Corrige um problema comum onde os ícones do Leaflet não aparecem corretamente no React
+// Corrige o ícone padrão do Leaflet no React
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
+  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
+  iconUrl: require('leaflet/dist/images/marker-icon.png'),
+  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
 });
 
-// Função principal do componente App
-function App() {
-  // Lista de estabelecimentos com nome e coordenadas (latitude e longitude)
-  const estabelecimentos = [
-    { nome: 'Padaria do João', lat: -23.55052, lng: -46.633308 },
-    { nome: 'Mercado Central', lat: -23.551, lng: -46.632 },
-  ];
+export default function App() {
+  const [avaliar, setAvaliar] = useState(false);
+  const [localSelecionado, setLocalSelecionado] = useState(null);
+  const [mapReady, setMapReady] = useState(false);
+
+  // Memoriza os marcadores para não renderizar novamente toda hora
+  const marcadores = useMemo(() => (
+    <Marker position={[-23.55052, -46.633308]}>
+      <Popup>
+        Estabelecimento Exemplo <br />
+        <button onClick={() => {
+          setAvaliar(true);
+          setLocalSelecionado({ nome: 'Estabelecimento Exemplo', lat: -23.55052, lng: -46.633308 });
+        }}>Avaliar</button>
+      </Popup>
+    </Marker>
+  ), []);
+
+  const fecharFormulario = () => {
+    setAvaliar(false);
+    setLocalSelecionado(null);
+  };
 
   return (
     <div className="App">
-      {/* Título da aplicação */}
-      <h1>Localizador de Estabelecimentos</h1>
+      <h1>Mapa de Estabelecimentos</h1>
 
-      {/* Container do mapa com centro e zoom definidos, e tamanho configurado via CSS inline */}
+      {/* Mostra mensagem enquanto mapa não carrega */}
+      {!mapReady && <p>Carregando mapa...</p>}
+
       <MapContainer
         center={[-23.55052, -46.633308]}
-        zoom={15}
-        style={{ height: "500px", width: "100%" }}
+        zoom={13}
+        className="leaflet-container"
+        preferCanvas={true}              // MELHORIA 1: canvas para melhor performance
+        whenReady={() => setMapReady(true)} // MELHORIA 3: seta quando mapa estiver pronto
       >
-        {/* Camada do mapa (OpenStreetMap) */}
-        <TileLayer
-          attribution='&copy; OpenStreetMap'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-        {/* Mapeia os estabelecimentos para adicionar marcadores no mapa */}
-        {estabelecimentos.map((estab, index) => (
-          <Marker key={index} position={[estab.lat, estab.lng]}>
-            {/* Texto que aparece ao clicar no marcador */}
-            <Popup>{estab.nome}</Popup>
-          </Marker>
-        ))}
+        {/* MELHORIA 2: renderiza marcadores memorizados */}
+        {marcadores}
       </MapContainer>
+
+      {avaliar && localSelecionado && (
+        <AvaliacaoForm local={localSelecionado} onClose={fecharFormulario} />
+      )}
     </div>
   );
 }
-
-// Exporta o componente para ser usado em outros arquivos (como index.js)
-export default App;
